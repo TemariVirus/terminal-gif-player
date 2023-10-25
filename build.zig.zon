@@ -1,0 +1,11 @@
+.{
+    .name = "term-gif-player",
+    .version = "0.0.0",
+    .paths = []const []const u8{""},
+    .dependencies = .{
+        .zigimg = .{
+            .url = "https://github.com/Zemogus/zigimg/archive/48a36410b615dbffb8ea5440ec70e97298bacabe.tar.gz",
+            .hash = "1220551f9ddf4da872c1d9013101fcdc44d9933793de0ee7a9dc2b88b6cfe42d367c",
+        },
+    },
+}
