@@ -28,7 +28,7 @@ Terminals just aren't optimised for rendering moving images, who would've though
 
 ## Sources for GIFs
 
-All GIFs provided are not owned by me, and are used for demostrational purposes only.
+All GIFs provided are not owned by me, and are used for demostrational purposes only. Everything outside of the `test-gifs/` folder is provided under The Unlicense.
 
 - [bad-apple.gif, bad-apple-original.gif](https://www.youtube.com/watch?v=FtutLA63Cp8)
 - [c-donut.gif](https://github.com/limiteci/limiteci/blob/main/esc/images/donut1.gif)
