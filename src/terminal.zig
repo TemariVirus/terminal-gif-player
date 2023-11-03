@@ -17,7 +17,7 @@ const sigaction = std.os.sigaction;
 
 const is_windows = @import("builtin").os.tag == .windows;
 const ESC = "\x1B";
-const BEL = "\x07";
+const ST = ESC ++ "\\";
 const CSI = ESC ++ "[";
 const OSC = ESC ++ "]";
 
@@ -372,7 +372,7 @@ pub fn actualSize() Size {
 pub fn setTitle(title: []const u8) void {
     stdout.writeAll(OSC ++ "0;") catch {};
     stdout.writeAll(title) catch {};
-    stdout.writeAll(ESC ++ BEL) catch {};
+    stdout.writeAll(ST) catch {};
 }
 
 fn useAlternateBuffer() void {
