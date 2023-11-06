@@ -241,14 +241,12 @@ pub fn init(
         const ENABLE_PROCESSED_OUTPUT = 0x1;
         const ENABLE_WRAP_AT_EOL_OUTPUT = 0x2;
         const ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4;
-        const DISABLE_NEWLINE_AUTO_RETURN = 0x8;
         const ENABLE_LVB_GRID_WORLDWIDE = 0x10;
         const result2 = setConsoleMode(
             stdout.handle,
             ENABLE_PROCESSED_OUTPUT |
                 ENABLE_WRAP_AT_EOL_OUTPUT |
                 ENABLE_VIRTUAL_TERMINAL_PROCESSING |
-                DISABLE_NEWLINE_AUTO_RETURN |
                 ENABLE_LVB_GRID_WORLDWIDE,
         );
         if (sys.getErrno(result2) != .SUCCESS) {

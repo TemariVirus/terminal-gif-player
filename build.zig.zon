@@ -4,8 +4,8 @@
     .paths = []const []const u8{""},
     .dependencies = .{
         .zigimg = .{
-            .url = "https://github.com/Zemogus/zigimg/archive/48a36410b615dbffb8ea5440ec70e97298bacabe.tar.gz",
-            .hash = "1220551f9ddf4da872c1d9013101fcdc44d9933793de0ee7a9dc2b88b6cfe42d367c",
+            .url = "https://github.com/zigimg/zigimg/archive/368658aa6b4d22cd532f2785d11f75b2ec2b490c.tar.gz",
+            .hash = "12201a74c6aa44832f8eac3e4a0e92e7bb7f3d6a12777f517fd470d7f6643cdc33fc",
         },
     },
 }
