@@ -1,11 +1,11 @@
 .{
     .name = "term-gif-player",
     .version = "0.0.0",
-    .paths = []const []const u8{""},
     .dependencies = .{
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/368658aa6b4d22cd532f2785d11f75b2ec2b490c.tar.gz",
-            .hash = "12201a74c6aa44832f8eac3e4a0e92e7bb7f3d6a12777f517fd470d7f6643cdc33fc",
+            .url = "https://github.com/zigimg/zigimg/archive/b269e44d8162abfa4e36a372136e53958dd62b12.tar.gz",
+            .hash = "12203ee2ea8bd9593f3f27a0d8b3253f76a0c2f97d0476925083abf4f703d8ef4310",
         },
     },
+    .paths = .{""},
 }
