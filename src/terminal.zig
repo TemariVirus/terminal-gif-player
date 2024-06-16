@@ -2,18 +2,18 @@
 
 const std = @import("std");
 const kernel32 = windows.kernel32;
-const sys = std.os.system;
+const linux = std.os.linux;
 const time = std.time;
 const unicode = std.unicode;
 const windows = std.os.windows;
 
 const ByteList = std.ArrayListUnmanaged(u8);
 const File = std.fs.File;
-const SIG = std.os.SIG;
-const Sigaction = std.os.Sigaction;
+const SIG = linux.SIG;
+const Sigaction = linux.Sigaction;
 
 const assert = std.debug.assert;
-const sigaction = std.os.sigaction;
+const sigaction = linux.sigaction;
 
 const is_windows = @import("builtin").os.tag == .windows;
 const ESC = "\x1B";
@@ -223,18 +223,18 @@ pub fn init(
     if (is_windows) {
         _ = signal(SIG.INT, handleExitWindows);
     } else {
-        const action = std.os.Sigaction{
+        const action = Sigaction{
             .handler = .{ .handler = handleExit },
-            .mask = std.os.empty_sigset,
+            .mask = linux.empty_sigset,
             .flags = 0,
         };
-        std.os.sigaction(SIG.INT, &action, null) catch unreachable;
+        _ = sigaction(SIG.INT, &action, null);
     }
 
     if (is_windows) {
         const CP_UTF8 = 65001;
         const result = kernel32.SetConsoleOutputCP(CP_UTF8);
-        if (sys.getErrno(result) != .SUCCESS) {
+        if (result == windows.FALSE) {
             return InitError.FailedToSetConsoleOutputCP;
         }
 
@@ -249,7 +249,7 @@ pub fn init(
                 ENABLE_VIRTUAL_TERMINAL_PROCESSING |
                 ENABLE_LVB_GRID_WORLDWIDE,
         );
-        if (sys.getErrno(result2) != .SUCCESS) {
+        if (result2 == windows.FALSE) {
             return InitError.FailedToSetConsoleMode;
         }
     }
@@ -315,20 +315,20 @@ pub fn getTerminalSize() ?Size {
         return getTerminalSizeWindows();
     }
 
-    if (!@hasDecl(sys, "ioctl") or
-        !@hasDecl(sys, "T") or
-        !@hasDecl(sys.T, "IOCGWINSZ"))
+    if (!@hasDecl(linux, "ioctl") or
+        !@hasDecl(linux, "T") or
+        !@hasDecl(linux.T, "IOCGWINSZ"))
     {
         @compileError("ioctl not available; cannot get terminal size.");
     }
 
-    var size: sys.winsize = undefined;
-    const result = sys.ioctl(
-        std.os.STDOUT_FILENO,
-        sys.T.IOCGWINSZ,
+    var size: linux.winsize = undefined;
+    const result = linux.ioctl(
+        linux.STDOUT_FILENO,
+        linux.T.IOCGWINSZ,
         @intFromPtr(&size),
     );
-    if (sys.getErrno(result) != .SUCCESS) {
+    if (@as(isize, @bitCast(result)) == -1) {
         return null;
     }
 
@@ -341,7 +341,7 @@ pub fn getTerminalSize() ?Size {
 fn getTerminalSizeWindows() ?Size {
     var info: windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
     const result = kernel32.GetConsoleScreenBufferInfo(stdout.handle, &info);
-    if (sys.getErrno(result) != .SUCCESS) {
+    if (result == windows.FALSE) {
         return null;
     }
 
