@@ -1,10 +1,11 @@
 .{
-    .name = "term-gif-player",
+    .name = .term_gif_player,
+    .fingerprint = 0xfda713f56229ac98,
     .version = "0.0.0",
     .dependencies = .{
         .zigimg = .{
-            .url = "https://github.com/zigimg/zigimg/archive/cbb0c64caffd5b02863aadd62bab48cef7f86ceb.tar.gz",
-            .hash = "1220c0980dc05816b12a8188546b4847bcf38e5e99defc0ea79a8d6bd4809049a029",
+            .url = "git+https://github.com/TemariVirus/zigimg#6f554e720dc31a65776147ab0c93e0ae0eb56600",
+            .hash = "12201fe34247ca9db60137cc490c1f2a71c884b0e383bc66dea023ea34440bf94447",
         },
     },
     .paths = .{""},
