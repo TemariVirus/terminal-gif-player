@@ -38,16 +38,24 @@ var init_time: i128 = undefined;
 var frames_drawn: usize = undefined;
 
 pub const Pixel = struct {
-    const str = "  ";
-    const width = 2;
-    const height = 1;
-
     r: u8,
     g: u8,
     b: u8,
 
     pub fn eql(self: Pixel, other: Pixel) bool {
         return self.r == other.r and self.g == other.g and self.b == other.b;
+    }
+};
+
+const TerminalPixel = struct {
+    fg: Pixel,
+    bg: ?Pixel,
+
+    fn eql(self: TerminalPixel, other: TerminalPixel) bool {
+        const bgs_null = self.bg == null and other.bg == null;
+        const bgs_not_null = self.bg != null and other.bg != null;
+        const bgs_eql = bgs_null or (bgs_not_null and self.bg.?.eql(other.bg.?));
+        return self.fg.eql(other.fg) and bgs_eql;
     }
 };
 
@@ -72,15 +80,15 @@ pub const Size = struct {
 
     inline fn canvasToTerm(self: Size) Size {
         return Size{
-            .width = self.width * Pixel.width,
-            .height = self.height * Pixel.height,
+            .width = self.width,
+            .height = @divTrunc(self.height, 2),
         };
     }
 
     inline fn termToCanvas(self: Size) Size {
         return Size{
-            .width = @divTrunc(self.width, Pixel.width),
-            .height = @divTrunc(self.height, Pixel.height),
+            .width = self.width,
+            .height = self.height * 2,
         };
     }
 };
@@ -98,10 +106,6 @@ const Frame = struct {
         allocator.free(self.pixels);
     }
 
-    fn termSize(self: Frame) Size {
-        return self.size.enlarge(Pixel.width, Pixel.height);
-    }
-
     fn inBounds(self: Frame, x: u16, y: u16) bool {
         return x < self.size.width and y < self.size.height;
     }
@@ -110,6 +114,16 @@ const Frame = struct {
         assert(self.inBounds(x, y));
         const index = @as(usize, y) * self.size.width + x;
         return self.pixels[index];
+    }
+
+    fn getTerminal(self: Frame, x: u16, y: u16) TerminalPixel {
+        assert(self.inBounds(x, y * 2));
+        const index = @as(usize, y * 2) * self.size.width + x;
+        const index2 = index + self.size.width;
+        return .{
+            .fg = self.pixels[index],
+            .bg = if (index2 < self.pixels.len) self.pixels[index2] else null,
+        };
     }
 
     fn set(self: Frame, x: u16, y: u16, p: Pixel) void {
@@ -134,9 +148,7 @@ const FramePool = struct {
         }
 
         const is_used = try allocator.alloc(bool, capacity);
-        for (0..capacity) |i| {
-            is_used[i] = false;
-        }
+        @memset(is_used, false);
 
         return FramePool{ .frames = frames, .used = is_used };
     }
@@ -406,11 +418,15 @@ pub fn render() !void {
     var last_y: u16 = 0;
     if (draw_diff) {
         // Find first difference
-        for (0..current.pixels.len) |i| {
-            if (!last.?.pixels[i].eql(current.pixels[i])) {
-                last_x = @intCast(i % current.size.width);
-                last_y = @intCast(i / current.size.width);
-                break;
+        outer: for (0..(draw_size.height + 1) / 2) |y| {
+            for (0..draw_size.width) |x| {
+                if (!last.?.getTerminal(@intCast(x), @intCast(y)).eql(
+                    current.getTerminal(@intCast(x), @intCast(y)),
+                )) {
+                    last_x = @intCast(x);
+                    last_y = @intCast(y);
+                    break :outer;
+                }
             }
         } else {
             // No diff to draw, advance and return
@@ -427,18 +443,17 @@ pub fn render() !void {
     }
     try setCursorPos(writer, last_x, last_y);
 
-    var last_color = current.pixels[toCurrentIndex(last_x, last_y)];
-    try setColor(writer, last_color);
+    var last_tixel = current.getTerminal(last_x, last_y);
+    try setForegroundColor(writer, last_tixel.fg);
+    try setBackgroundColor(writer, last_tixel.bg);
 
     for (last_x..draw_size.width) |x| {
-        const i = toCurrentIndex(@intCast(x), last_y);
-        const color = current.pixels[i];
-
-        if (draw_diff and last.?.pixels[i].eql(color)) {
+        const tixel = current.getTerminal(@intCast(x), last_y);
+        if (draw_diff and last.?.getTerminal(@intCast(x), last_y).eql(tixel)) {
             continue;
         }
 
-        try setColor(writer, color);
+        try colorsDiff(writer, last_tixel, tixel);
         try cursorDiff(
             writer,
             last_x,
@@ -447,21 +462,19 @@ pub fn render() !void {
             last_y,
             assume_wrap,
         );
-        last_color = color;
+        last_tixel = tixel;
         last_x = @intCast(x);
 
-        try writer.writeAll(Pixel.str);
+        try writer.writeAll("▀");
     }
-    for (last_y + 1..draw_size.height) |y| {
+    for (last_y + 1..(draw_size.height + 1) / 2) |y| {
         for (0..draw_size.width) |x| {
-            const i = toCurrentIndex(@intCast(x), @intCast(y));
-            const pixel = current.pixels[i];
-
-            if (draw_diff and last.?.pixels[i].eql(pixel)) {
+            const tixel = current.getTerminal(@intCast(x), @intCast(y));
+            if (draw_diff and last.?.getTerminal(@intCast(x), @intCast(y)).eql(tixel)) {
                 continue;
             }
 
-            try setColor(writer, pixel);
+            try colorsDiff(writer, last_tixel, tixel);
             try cursorDiff(
                 writer,
                 last_x,
@@ -470,11 +483,11 @@ pub fn render() !void {
                 @intCast(y),
                 assume_wrap,
             );
-            last_color = pixel;
+            last_tixel = tixel;
             last_x = @intCast(x);
             last_y = @intCast(y);
 
-            try writer.writeAll(Pixel.str);
+            try writer.writeAll("▀");
         }
     }
 
@@ -483,6 +496,19 @@ pub fn render() !void {
     stdout.writeAll(draw_buffer.items[0..draw_buffer.items.len]) catch {};
 
     advanceBuffers();
+}
+
+fn colorsDiff(writer: anytype, last_tixel: TerminalPixel, tixel: TerminalPixel) !void {
+    if (!last_tixel.fg.eql(tixel.fg)) {
+        try setForegroundColor(writer, tixel.fg);
+    }
+
+    const bgs_null = last_tixel.bg == null and tixel.bg == null;
+    const bgs_not_null = last_tixel.bg != null and tixel.bg != null;
+    const bgs_eql = bgs_null or (bgs_not_null and last_tixel.bg.?.eql(tixel.bg.?));
+    if (!bgs_eql) {
+        try setBackgroundColor(writer, tixel.bg);
+    }
 }
 
 inline fn cursorDiff(
@@ -510,10 +536,6 @@ inline fn cursorDiff(
     try setCursorPos(writer, x, y);
 }
 
-inline fn toCurrentIndex(x: u16, y: u16) usize {
-    return @as(usize, y) * @as(usize, current.size.width) + @as(usize, x);
-}
-
 fn advanceBuffers() void {
     const size = canvas_size.bound(terminal_size.termToCanvas());
     if (last) |l| {
@@ -532,9 +554,20 @@ fn resetColors(writer: anytype) !void {
     try writer.writeAll(CSI ++ "m");
 }
 
-fn setColor(writer: anytype, color: Pixel) !void {
-    // Sets the background color only; we don't need the foreground color
-    try writer.print(CSI ++ "48;2;{};{};{}m", .{ color.r, color.g, color.b });
+fn setForegroundColor(writer: anytype, color: ?Pixel) !void {
+    if (color) |fg| {
+        try writer.print(CSI ++ "38;2;{};{};{}m", .{ fg.r, fg.g, fg.b });
+    } else {
+        try writer.writeAll(CSI ++ "38;1m");
+    }
+}
+
+fn setBackgroundColor(writer: anytype, color: ?Pixel) !void {
+    if (color) |bg| {
+        try writer.print(CSI ++ "48;2;{};{};{}m", .{ bg.r, bg.g, bg.b });
+    } else {
+        try writer.writeAll(CSI ++ "48;1m");
+    }
 }
 
 fn resetCursor(writer: anytype) !void {
@@ -542,7 +575,7 @@ fn resetCursor(writer: anytype) !void {
 }
 
 fn setCursorPos(writer: anytype, x: u16, y: u16) !void {
-    try writer.print(CSI ++ "{};{}H", .{ y + 1, x * Pixel.width + 1 });
+    try writer.print(CSI ++ "{};{}H", .{ y + 1, x + 1 });
 }
 
 fn showCursor(writer: anytype) !void {

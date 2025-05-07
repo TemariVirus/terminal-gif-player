@@ -32,14 +32,17 @@ pub fn main() !void {
     defer args.deinit();
 
     // Get first valid GIF
-    std.debug.print("Initialising...\n", .{});
     var has_args = false;
     var gif: Image = while (args.next()) |arg| {
+        if (!has_args) {
+            std.debug.print("Initialising...\n", .{});
+        }
         has_args = true;
-        const img = Image.fromFilePath(allocator, arg) catch continue;
+        var img = Image.fromFilePath(allocator, arg) catch continue;
         if (img.isAnimation()) {
             break img;
         }
+        img.deinit();
     } else {
         if (has_args) {
             std.debug.print("File was not a GIF\n", .{});
