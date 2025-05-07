@@ -334,7 +334,7 @@ pub fn getTerminalSize() ?Size {
         @compileError("ioctl not available; cannot get terminal size.");
     }
 
-    var size: linux.winsize = undefined;
+    var size: std.posix.winsize = undefined;
     const result = linux.ioctl(
         linux.STDOUT_FILENO,
         linux.T.IOCGWINSZ,
@@ -345,8 +345,8 @@ pub fn getTerminalSize() ?Size {
     }
 
     return Size{
-        .width = size.ws_col,
-        .height = size.ws_row,
+        .width = size.col,
+        .height = size.row,
     };
 }
 
